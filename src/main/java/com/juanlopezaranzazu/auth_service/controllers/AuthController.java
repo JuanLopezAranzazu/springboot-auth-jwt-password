@@ -49,4 +49,28 @@ public class AuthController {
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    // Enviar correo para recuperar la contraseña
+    // Ejemplo de petición: /forgot-password?email=correo@dominio
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestParam String email) {
+        Map<String, Object> response = new HashMap<>();
+
+        authService.sendPasswordResetToken(email);
+        response.put("message", "Correo de recuperación enviado.");
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    // Recuperar la contraseña
+    // Ejemplo de petición: /reset-password?token=token&newPassword=nuevaContraseña
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestParam String token, @RequestParam String newPassword) {
+        Map<String, Object> response = new HashMap<>();
+
+        authService.resetPassword(token, newPassword);
+        response.put("message", "Contraseña cambiada con éxito.");
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 }

@@ -1,11 +1,11 @@
 package com.juanlopezaranzazu.auth_service.services;
 
 import com.juanlopezaranzazu.auth_service.dtos.*;
+import com.juanlopezaranzazu.auth_service.entities.PasswordResetToken;
 import com.juanlopezaranzazu.auth_service.entities.Role;
 import com.juanlopezaranzazu.auth_service.entities.User;
-import com.juanlopezaranzazu.auth_service.exceptions.RoleNotFoundException;
-import com.juanlopezaranzazu.auth_service.exceptions.UserAlreadyExistsException;
-import com.juanlopezaranzazu.auth_service.exceptions.UserNotFoundException;
+import com.juanlopezaranzazu.auth_service.exceptions.*;
+import com.juanlopezaranzazu.auth_service.repositories.IPasswordResetTokenRepository;
 import com.juanlopezaranzazu.auth_service.repositories.IRoleRepository;
 import com.juanlopezaranzazu.auth_service.repositories.IUserRepository;
 import com.juanlopezaranzazu.auth_service.utils.JwtUtil;
@@ -18,33 +18,41 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthServiceImpl implements IAuthService {
 
     private final IUserRepository userRepository;
     private final IRoleRepository roleRepository;
+    private final IPasswordResetTokenRepository passwordResetTokenRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
+    private final IEmailService emailService;
     private final String DEFAULT_ROLE_NAME = "ROLE_USER"; // Nombre del rol por defecto
 
     public AuthServiceImpl(
             IUserRepository userRepository,
             IRoleRepository roleRepository,
+            IPasswordResetTokenRepository passwordResetTokenRepository,
             JwtUtil jwtUtil,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            UserDetailsService userDetailsService
+            UserDetailsService userDetailsService,
+            IEmailService emailService
     ){
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
+        this.emailService = emailService;
     }
 
     @Override
@@ -123,6 +131,46 @@ public class AuthServiceImpl implements IAuthService {
                 .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
 
         return convertToResponse(user);
+    }
+
+    @Override
+    public void sendPasswordResetToken(String email) {
+        // Buscar usuario en la base de datos
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+
+        String token = UUID.randomUUID().toString();
+        LocalDateTime expiryDate = LocalDateTime.now().plusHours(1); // Expira en 1 hora
+
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setUser(user);
+        resetToken.setExpiryDate(expiryDate);
+        passwordResetTokenRepository.save(resetToken);
+
+        String resetLink = "http://localhost:9090/api/v1/auth/reset-password?token=" + token;
+        emailService.sendEmail(user.getEmail(), "Recuperación de Contraseña", 
+            "Haz clic en el siguiente enlace para restablecer tu contraseña: " + resetLink);
+    }
+
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        // Buscar token en la base de datos
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new InvalidTokenException("Token inválido"));
+
+        // Verificar que el token no haya expirado
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new ExpiredTokenException("Token expirado");
+        }
+
+        // Encriptar nueva contraseña y actualizar en la base de datos
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Eliminar token de la base de datos
+        passwordResetTokenRepository.delete(resetToken);
     }
 
     // Devolver un DTO

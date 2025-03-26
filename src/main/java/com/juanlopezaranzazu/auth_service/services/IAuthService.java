@@ -7,4 +7,6 @@ public interface IAuthService {
     AuthResponse login(AuthRequest authRequest); // Inicio de sesión de usuarios
     UserResponse me(); // Obtener usuario
     void changePassword(ChangePasswordRequest changePasswordRequest); // Cambiar contraseña de usuario
+    void sendPasswordResetToken(String email); // Enviar correo para recuperar contraseña
+    void resetPassword(String token, String newPassword); // Recuperar contraseña
 }
