@@ -2,7 +2,7 @@ package com.juanlopezaranzazu.auth_service.config;
 
 import com.juanlopezaranzazu.auth_service.entities.Role;
 import com.juanlopezaranzazu.auth_service.entities.User;
-import com.juanlopezaranzazu.auth_service.exceptions.RoleNotFoundException;
+import com.juanlopezaranzazu.auth_service.exceptions.NotFoundException;
 import com.juanlopezaranzazu.auth_service.repositories.IRoleRepository;
 import com.juanlopezaranzazu.auth_service.repositories.IUserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,7 +48,7 @@ public class AdminInitializer implements CommandLineRunner {
         if (adminUser.isEmpty()) {
             // obtener el rol admin
             Role role = roleRepository.findByName(DEFAULT_ROLE_NAME)
-                    .orElseThrow(() -> new RoleNotFoundException(DEFAULT_ROLE_NAME));
+                    .orElseThrow(() -> new NotFoundException("El rol " + DEFAULT_ROLE_NAME + " no existe"));
 
             // Crear un usuario
             User newUser = new User();

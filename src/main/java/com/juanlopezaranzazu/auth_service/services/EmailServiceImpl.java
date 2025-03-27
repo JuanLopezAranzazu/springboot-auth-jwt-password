@@ -12,6 +12,8 @@ public class EmailServiceImpl implements IEmailService {
         this.mailSender = mailSender;
     }
 
+    // Método para enviar un correo electrónico
+    @Override
     public void sendEmail(String to, String subject, String text) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);

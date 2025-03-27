@@ -35,16 +35,10 @@ public class AuthServiceImpl implements IAuthService {
     private final IEmailService emailService;
     private final String DEFAULT_ROLE_NAME = "ROLE_USER"; // Nombre del rol por defecto
 
-    public AuthServiceImpl(
-            IUserRepository userRepository,
-            IRoleRepository roleRepository,
-            IPasswordResetTokenRepository passwordResetTokenRepository,
-            JwtUtil jwtUtil,
-            PasswordEncoder passwordEncoder,
-            AuthenticationManager authenticationManager,
-            UserDetailsService userDetailsService,
-            IEmailService emailService
-    ){
+    public AuthServiceImpl(IUserRepository userRepository, IRoleRepository roleRepository,
+            IPasswordResetTokenRepository passwordResetTokenRepository, JwtUtil jwtUtil,
+            PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager,
+            UserDetailsService userDetailsService, IEmailService emailService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
@@ -60,12 +54,12 @@ public class AuthServiceImpl implements IAuthService {
         // Validar si ya existe el correo
         Optional<User> userWithSameEmail = userRepository.findByEmail(registerRequest.getEmail());
         if (userWithSameEmail.isPresent()) {
-            throw new UserAlreadyExistsException(registerRequest.getEmail());
+            throw new BadRequestException("El correo " + registerRequest.getEmail() + " ya está en uso");
         }
 
         // Validar que el rol exista y esté activo
         Role role = roleRepository.findByName(DEFAULT_ROLE_NAME)
-                .orElseThrow(() -> new RoleNotFoundException(DEFAULT_ROLE_NAME));
+                .orElseThrow(() -> new NotFoundException("El rol " + DEFAULT_ROLE_NAME + " no existe"));
 
         // Crear un usuario
         User newUser = new User();
@@ -86,7 +80,8 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     public AuthResponse login(AuthRequest authRequest) {
         // Verificar si el correo y la contraseña son correctas
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authRequest.getEmail(), authRequest.getPassword()));
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(authRequest.getEmail(), authRequest.getPassword()));
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(authRequest.getEmail());
         // Generar y devolver el token JWT
@@ -103,16 +98,16 @@ public class AuthServiceImpl implements IAuthService {
 
         // Buscar usuario en la base de datos
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         // Verificar que la contraseña actual sea correcta
         if (!passwordEncoder.matches(changePasswordRequest.getCurrentPassword(), user.getPassword())) {
-            throw new RuntimeException("Contraseña actual incorrecta");
+            throw new BadRequestException("Contraseña actual incorrecta");
         }
 
         // Verificar que la nueva contraseña sea igual a la confirmación
         if (!changePasswordRequest.getNewPassword().equals(changePasswordRequest.getConfirmationPassword())) {
-            throw new RuntimeException("Las contraseñas no coinciden");
+            throw new BadRequestException("Las contraseñas no coinciden");
         }
 
         // Encriptar nueva contraseña y actualizar en la base de datos
@@ -128,7 +123,7 @@ public class AuthServiceImpl implements IAuthService {
 
         // Buscar usuario en la base de datos
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         return convertToResponse(user);
     }
@@ -137,7 +132,7 @@ public class AuthServiceImpl implements IAuthService {
     public void sendPasswordResetToken(String email) {
         // Buscar usuario en la base de datos
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         String token = UUID.randomUUID().toString();
         LocalDateTime expiryDate = LocalDateTime.now().plusHours(1); // Expira en 1 hora
@@ -148,20 +143,21 @@ public class AuthServiceImpl implements IAuthService {
         resetToken.setExpiryDate(expiryDate);
         passwordResetTokenRepository.save(resetToken);
 
+        // Enviar correo con el token
         String resetLink = "http://localhost:9090/api/v1/auth/reset-password?token=" + token;
-        emailService.sendEmail(user.getEmail(), "Recuperación de Contraseña", 
-            "Haz clic en el siguiente enlace para restablecer tu contraseña: " + resetLink);
+        emailService.sendEmail(user.getEmail(), "Recuperación de Contraseña",
+                "Haz clic en el siguiente enlace para restablecer tu contraseña: " + resetLink);
     }
 
     @Override
     public void resetPassword(String token, String newPassword) {
         // Buscar token en la base de datos
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
-                .orElseThrow(() -> new InvalidTokenException("Token inválido"));
+                .orElseThrow(() -> new UnauthorizedException("Token inválido"));
 
         // Verificar que el token no haya expirado
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new ExpiredTokenException("Token expirado");
+            throw new UnauthorizedException("Token expirado");
         }
 
         // Encriptar nueva contraseña y actualizar en la base de datos
@@ -182,7 +178,6 @@ public class AuthServiceImpl implements IAuthService {
                 user.getEmail(),
                 user.getPhone(),
                 user.getAddress(),
-                user.getRole().getName()
-        );
+                user.getRole().getName());
     }
 }

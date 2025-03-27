@@ -13,46 +13,34 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleUserNotFoundException(UserNotFoundException ex) {
+    // Manejar excepciones de recurso no encontrado
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFoundException(NotFoundException ex) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", ex.getMessage());
         response.put("status", HttpStatus.NOT_FOUND.value());
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(RoleNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleRoleNotFoundException(RoleNotFoundException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", ex.getMessage());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(UserAlreadyExistsException.class)
-    public ResponseEntity<Map<String, Object>> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
+    // Manejar excepciones de solicitud incorrecta
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequestException(BadRequestException ex) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", ex.getMessage());
         response.put("status", HttpStatus.BAD_REQUEST.value());
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidTokenException(InvalidTokenException ex) {
+    // Manejar excepciones de autorización
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorizedException(UnauthorizedException ex) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", ex.getMessage());
         response.put("status", HttpStatus.UNAUTHORIZED.value());
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(ExpiredTokenException.class)
-    public ResponseEntity<Map<String, Object>> handleExpiredTokenException(ExpiredTokenException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", ex.getMessage());
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
-        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
-    }
-
+    // Manejar excepciones de validación
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, Object> response = new HashMap<>();
@@ -67,6 +55,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    // Manejar cualquier otra excepción no controlada
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
         Map<String, Object> response = new HashMap<>();
@@ -75,6 +64,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    // Manejar excepciones de acceso a datos
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<Map<String, Object>> handleDataAccessException(DataAccessException ex) {
         Map<String, Object> response = new HashMap<>();
